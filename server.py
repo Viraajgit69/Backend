@@ -612,31 +612,37 @@ def telegram_webhook():
         return jsonify({'error': str(e)}), 500
 
 # Create admin user if it doesn't exist
-@app.before_first_request
 def create_admin_user():
-    admin_username = os.getenv('ADMIN_USERNAME', 'admin')
-    admin_password = os.getenv('ADMIN_PASSWORD', 'admin123')
-    admin_email = os.getenv('ADMIN_EMAIL', 'admin@example.com')
-    
-    # Check if admin user exists
-    admin = users_collection.find_one({'username': admin_username})
-    if not admin:
-        # Create admin user
-        hashed_password = bcrypt.hashpw(admin_password.encode('utf-8'), bcrypt.gensalt())
-        api_key = generate_api_key()
-        
-        admin_user = {
-            'username': admin_username,
-            'password': hashed_password,
-            'email': admin_email,
-            'apiKey': api_key,
-            'isAdmin': True,
-            'telegram_id': ADMIN_CHAT_ID,  # Set your Telegram ID as admin
-            'createdAt': datetime.datetime.now()
-        }
-        
-        result = users_collection.insert_one(admin_user)
-        print(f"Admin user created: {admin_username}")
+    with app.app_context():  # Ensure Flask app context
+        admin_username = os.getenv('ADMIN_USERNAME', 'admin')
+        admin_password = os.getenv('ADMIN_PASSWORD', 'admin123')
+        admin_email = os.getenv('ADMIN_EMAIL', 'admin@example.com')
+
+        # Check if admin user exists
+        admin = users_collection.find_one({'username': admin_username})
+        if not admin:
+            hashed_password = bcrypt.hashpw(admin_password.encode('utf-8'), bcrypt.gensalt())
+            api_key = generate_api_key()
+
+            admin_user = {
+                'username': admin_username,
+                'password': hashed_password,
+                'email': admin_email,
+                'apiKey': api_key,
+                'isAdmin': True,
+                'telegram_id': ADMIN_CHAT_ID,  # Set your Telegram ID as admin
+                'createdAt': datetime.datetime.now()
+            }
+
+            result = users_collection.insert_one(admin_user)
+            print(f"Admin user created: {admin_username}")
+
+# Manually call the function when the app starts
+if __name__ == '__main__':
+    create_admin_user()  # Call it before starting the server
+    port = int(os.getenv('PORT', 3000))
+    app.run(host='0.0.0.0', port=port, debug=False)
+
         
         # Store admin in telegram users collection
         telegram_users_collection.update_one(
