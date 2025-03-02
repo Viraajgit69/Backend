@@ -20,7 +20,7 @@ CORS(app)
 # MongoDB Connection
 MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb+srv://viraaj35:viraajmongo@danger35.wgk98.mongodb.net/?retryWrites=true&w=majority&appName=Danger35')
 client = MongoClient(MONGODB_URI)
-db = client.get_database()
+db = client.get_database("Danger35")
 
 # Collections
 users_collection = db.users
