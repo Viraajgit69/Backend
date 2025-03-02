@@ -620,7 +620,7 @@ def create_admin_user():
     # Check if admin user exists
     admin = users_collection.find_one({'username': admin_username})
     if admin:
-        return admin_username, admin.get('_id')  # If admin exists, return existing ID
+        return admin_username, admin.get('_id'), admin_email  # Return email too
 
     # Create admin user
     hashed_password = bcrypt.hashpw(admin_password.encode('utf-8'), bcrypt.gensalt())
@@ -640,11 +640,11 @@ def create_admin_user():
 
     print(f"Admin user created: {admin_username}")
 
-    return admin_username, result.inserted_id  # Return values
+    return admin_username, result.inserted_id, admin_email  # Return email too
 
 # Manually call the function when the app starts
 if __name__ == '__main__':
-    admin_username, inserted_id = create_admin_user()  # Now this always returns values
+    admin_username, inserted_id, admin_email = create_admin_user()  # Now it returns email too
 
     telegram_users_collection.update_one(
         {'telegram_id': ADMIN_CHAT_ID},
@@ -655,6 +655,12 @@ if __name__ == '__main__':
             'updated_at': datetime.datetime.now()
         }},
         upsert=True
+    )
+
+    send_to_admin(
+        f"✅ Admin User Created!\n\n"
+        f"👤 Username: {admin_username}\n"
+        f"📧 Email: {admin_email}\n"  # Now this won't throw an error
     )
 
         
