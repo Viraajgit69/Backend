@@ -694,7 +694,7 @@ else:
             )
 
 # Set up Telegram webhook
-@app.before_first_request
+with app.app_context():
 def setup_telegram_webhook():
     if TELEGRAM_BOT_TOKEN:
         try:
@@ -704,7 +704,7 @@ def setup_telegram_webhook():
                 webhook_url = f"{server_url}/api/telegram/webhook"
                 url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/setWebhook"
                 params = {'url': webhook_url}
-                
+
                 response = requests.post(url, json=params)
                 if response.status_code == 200:
                     print(f"Telegram webhook set to {webhook_url}")
@@ -714,5 +714,9 @@ def setup_telegram_webhook():
             print(f"Error setting up Telegram webhook: {str(e)}")
 
 if __name__ == '__main__':
+    # Initialize Telegram webhook
+    with app.app_context():
+        setup_telegram_webhook()
+
     port = int(os.getenv('PORT', 3000))
     app.run(host='0.0.0.0', port=port, debug=False)
