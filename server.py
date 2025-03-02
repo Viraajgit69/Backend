@@ -613,29 +613,34 @@ def telegram_webhook():
 
 # Create admin user if it doesn't exist
 def create_admin_user():
-    with app.app_context():  # Ensure Flask app context
-        admin_username = os.getenv('ADMIN_USERNAME', 'admin')
-        admin_password = os.getenv('ADMIN_PASSWORD', 'admin123')
-        admin_email = os.getenv('ADMIN_EMAIL', 'admin@example.com')
+    admin_username = os.getenv('ADMIN_USERNAME', 'admin')
+    admin_password = os.getenv('ADMIN_PASSWORD', 'admin123')
+    admin_email = os.getenv('ADMIN_EMAIL', 'admin@example.com')
 
-        # Check if admin user exists
-        admin = users_collection.find_one({'username': admin_username})
-        if not admin:
-            hashed_password = bcrypt.hashpw(admin_password.encode('utf-8'), bcrypt.gensalt())
-            api_key = generate_api_key()
+    # Check if admin user exists
+    admin = users_collection.find_one({'username': admin_username})
+    if admin:
+        return admin_username, admin.get('_id')  # If admin exists, return existing ID
 
-            admin_user = {
-                'username': admin_username,
-                'password': hashed_password,
-                'email': admin_email,
-                'apiKey': api_key,
-                'isAdmin': True,
-                'telegram_id': ADMIN_CHAT_ID,  # Set your Telegram ID as admin
-                'createdAt': datetime.datetime.now()
-            }
+    # Create admin user
+    hashed_password = bcrypt.hashpw(admin_password.encode('utf-8'), bcrypt.gensalt())
+    api_key = generate_api_key()
 
-            result = users_collection.insert_one(admin_user)
-            print(f"Admin user created: {admin_username}")
+    admin_user = {
+        'username': admin_username,
+        'password': hashed_password,
+        'email': admin_email,
+        'apiKey': api_key,
+        'isAdmin': True,
+        'telegram_id': ADMIN_CHAT_ID,  # Set your Telegram ID as admin
+        'createdAt': datetime.datetime.now()
+    }
+
+    result = users_collection.insert_one(admin_user)  # Insert new admin
+
+    print(f"Admin user created: {admin_username}")
+
+    return admin_username, result.inserted_id  # Return values
 
 # Manually call the function when the app starts
 if __name__ == '__main__':
