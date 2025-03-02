@@ -639,22 +639,18 @@ def create_admin_user():
 
 # Manually call the function when the app starts
 if __name__ == '__main__':
-    create_admin_user()  # Call it before starting the server
-    port = int(os.getenv('PORT', 3000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    admin_username, inserted_id = create_admin_user()  # Call function & get values
 
-        
-        # Store admin in telegram users collection
     telegram_users_collection.update_one(
         {'telegram_id': ADMIN_CHAT_ID},
         {'$set': {
             'username': admin_username,
-            'user_id': str(result.inserted_id),
+            'user_id': str(inserted_id),  # Use stored inserted_id
             'is_admin': True,
             'updated_at': datetime.datetime.now()
-            }},
-            upsert=True
-        )
+        }},
+        upsert=True
+    )
         
         # Send Telegram notification
     send_to_admin(
