@@ -686,31 +686,6 @@ def telegram_webhook():
         return jsonify({'error': str(e)}), 500
 
 # Create admin user if it doesn't exist
-@app.before_first_request
-def create_admin_user():
-    admin_username = os.getenv('ADMIN_USERNAME', 'fnxdanger')
-    admin_password = os.getenv('ADMIN_PASSWORD', 'fnxdanger')
-    admin_email = os.getenv('ADMIN_EMAIL', 'fnxdanger3@gmail.com')
-    
-    # Check if admin user exists
-    admin = users_collection.find_one({'username': admin_username})
-    if not admin:
-        # Create admin user
-        hashed_password = bcrypt.hashpw(admin_password.encode('utf-8'), bcrypt.gensalt())
-        api_key = generate_api_key()
-        
-        admin_user = {
-            'username': admin_username,
-            'password': hashed_password,
-            'email': admin_email,
-            'apiKey': api_key,
-            'isAdmin': True,
-            'telegram_id': ADMIN_CHAT_ID,  # Set your Telegram ID as admin
-            'createdAt': datetime.datetime.now()
-        }
-        
-        result = users_collection.insert_one(admin_user)
-        print(f"Admin user created: {admin_username}")
         
         # Store admin in telegram users collection
         telegram_users_collection.update_one(
