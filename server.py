@@ -645,13 +645,13 @@ if __name__ == '__main__':
 
         
         # Store admin in telegram users collection
-        telegram_users_collection.update_one(
-            {'telegram_id': ADMIN_CHAT_ID},
-            {'$set': {
-                'username': admin_username,
-                'user_id': str(result.inserted_id),
-                'is_admin': True,
-                'updated_at': datetime.datetime.now()
+    telegram_users_collection.update_one(
+        {'telegram_id': ADMIN_CHAT_ID},
+        {'$set': {
+            'username': admin_username,
+            'user_id': str(result.inserted_id),
+            'is_admin': True,
+            'updated_at': datetime.datetime.now()
             }},
             upsert=True
         )
