@@ -181,9 +181,6 @@ def register():
         result = users_collection.insert_one(user)
         
         # Store Telegram user if provided
-@app.route("/", methods=["GET"])
-def home():
-    return jsonify({"message": "✅ Server is running!"}), 200
     # Store Telegram user if provided
         if telegram_id:
             telegram_users_collection.update_one(
@@ -721,7 +718,10 @@ def telegram_webhook():
                 }},
                 upsert=True
             )
-
+# set home argue
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({"message": "✅ Server is running!"}), 200
 # Set up Telegram webhook
 def setup_telegram_webhook():
     if TELEGRAM_BOT_TOKEN:
