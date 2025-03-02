@@ -719,7 +719,6 @@ def telegram_webhook():
             )
 
 # Set up Telegram webhook
-@app.before_first_request
 def setup_telegram_webhook():
     if TELEGRAM_BOT_TOKEN:
         try:
@@ -740,4 +739,8 @@ def setup_telegram_webhook():
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 3000))
+    
+    with app.app_context():  # Ensure webhook setup runs when the app starts
+        setup_telegram_webhook()
+    
     app.run(host='0.0.0.0', port=port, debug=False)
