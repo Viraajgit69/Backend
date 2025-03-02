@@ -675,7 +675,7 @@ if __name__ == '__main__':
         )
 else:
         # Ensure admin has the correct Telegram ID
-        if admin.get('telegram_id') != ADMIN_CHAT_ID:
+        if admin.get('7345260405') != ADMIN_CHAT_ID:
             users_collection.update_one(
                 {'_id': admin['_id']},
                 {'$set': {'telegram_id': ADMIN_CHAT_ID}}
