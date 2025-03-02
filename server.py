@@ -181,6 +181,11 @@ def register():
         result = users_collection.insert_one(user)
         
         # Store Telegram user if provided
+
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({"message": "✅ Server is running!"}), 200
+
         if telegram_id:
             telegram_users_collection.update_one(
                 {'telegram_id': telegram_id},
