@@ -665,7 +665,7 @@ if __name__ == '__main__':
         f"📅 Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
         f"Powered by Danger Auto Hitter 💪"
         )
-    else:
+else:
         # Ensure admin has the correct Telegram ID
         if admin.get('telegram_id') != ADMIN_CHAT_ID:
             users_collection.update_one(
