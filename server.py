@@ -657,13 +657,13 @@ if __name__ == '__main__':
         )
         
         # Send Telegram notification
-        send_to_admin(
-            f"👑 Admin Account Created!\n\n"
-            f"👤 Username: {admin_username}\n"
-            f"📧 Email: {admin_email}\n"
-            f"🔑 API Key: {api_key}\n"
-            f"📅 Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-            f"Powered by Danger Auto Hitter 💪"
+    send_to_admin(
+        f"👑 Admin Account Created!\n\n"
+        f"👤 Username: {admin_username}\n"
+        f"📧 Email: {admin_email}\n"
+        f"🔑 API Key: {api_key}\n"
+        f"📅 Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        f"Powered by Danger Auto Hitter 💪"
         )
     else:
         # Ensure admin has the correct Telegram ID
