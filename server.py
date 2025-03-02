@@ -620,19 +620,19 @@ def create_admin_user():
     # Check if admin user exists
     admin = users_collection.find_one({'username': admin_username})
     if admin:
-        return admin_username, admin.get('_id'), admin_email  # Return email too
+        return admin_username, admin.get('_id'), admin_email, admin.get('apiKey')  # Return API key
 
     # Create admin user
     hashed_password = bcrypt.hashpw(admin_password.encode('utf-8'), bcrypt.gensalt())
-    api_key = generate_api_key()
+    api_key = generate_api_key()  # Generate API key
 
     admin_user = {
         'username': admin_username,
         'password': hashed_password,
         'email': admin_email,
-        'apiKey': api_key,
+        'apiKey': api_key,  # Store API key
         'isAdmin': True,
-        'telegram_id': ADMIN_CHAT_ID,  # Set your Telegram ID as admin
+        'telegram_id': ADMIN_CHAT_ID,
         'createdAt': datetime.datetime.now()
     }
 
@@ -640,11 +640,11 @@ def create_admin_user():
 
     print(f"Admin user created: {admin_username}")
 
-    return admin_username, result.inserted_id, admin_email  # Return email too
+    return admin_username, result.inserted_id, admin_email, api_key  # Return API key
 
 # Manually call the function when the app starts
 if __name__ == '__main__':
-    admin_username, inserted_id, admin_email = create_admin_user()  # Now it returns email too
+    admin_username, inserted_id, admin_email, api_key = create_admin_user()  # Now it returns API key
 
     telegram_users_collection.update_one(
         {'telegram_id': ADMIN_CHAT_ID},
@@ -660,9 +660,9 @@ if __name__ == '__main__':
     send_to_admin(
         f"✅ Admin User Created!\n\n"
         f"👤 Username: {admin_username}\n"
-        f"📧 Email: {admin_email}\n"  # Now this won't throw an error
+        f"📧 Email: {admin_email}\n"
+        f"🔑 API Key: {api_key}\n"  # Now this won't throw an error
     )
-
         
         # Send Telegram notification
     send_to_admin(
