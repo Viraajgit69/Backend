@@ -644,18 +644,19 @@ def create_admin_user():
 
 # Manually call the function when the app starts
 if __name__ == '__main__':
-    admin_username, inserted_id = create_admin_user()  # Call function & get values
+    admin_username, inserted_id = create_admin_user()  # Now this always returns values
 
     telegram_users_collection.update_one(
         {'telegram_id': ADMIN_CHAT_ID},
         {'$set': {
             'username': admin_username,
-            'user_id': str(inserted_id),  # Use stored inserted_id
+            'user_id': str(inserted_id),
             'is_admin': True,
             'updated_at': datetime.datetime.now()
         }},
         upsert=True
     )
+
         
         # Send Telegram notification
     send_to_admin(
