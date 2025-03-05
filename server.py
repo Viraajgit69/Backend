@@ -748,3 +748,19 @@ if __name__ == '__main__':
         setup_telegram_webhook()
     
     app.run(host='0.0.0.0', port=port, debug=False)
+
+# Load BIN Data
+import json
+
+try:
+    with open("bin_data.json", "r") as file:
+        bin_database = json.load(file)
+except FileNotFoundError:
+    bin_database = {}
+
+@app.route("/bin/<bin_number>", methods=["GET"])
+def get_bin_info(bin_number):
+    bin_info = bin_database.get(bin_number)
+    if not bin_info:
+        return jsonify({"error": "BIN not found"}), 404
+    return jsonify(bin_info)
