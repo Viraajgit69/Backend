@@ -768,3 +768,8 @@ def get_bin_info(bin_number):
     if not bin_info:
         return jsonify({"error": "BIN not found"}), 404
     return jsonify(bin_info)
+
+@app.route('/api/data', methods=['GET'])
+def get_data():
+    return jsonify({"message": "Your API is working!"})
+
