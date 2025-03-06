@@ -7,8 +7,15 @@
         "category": "STANDARD"
     },
 	"4106210003": {
-        "bank": "SAUDI ARABIA",
-        "country": "SAR",
+        "bank": "AL RAJHI BANKING AND INVESTMENT CORP.",
+        "country": "SAUDI ARABIA",
+        "type": "Debit",
+        "scheme": "VISA",
+        "category": "STANDARD"
+	},
+	"484783000029": {
+        "bank": "AL RAJHI BANKING AND INVESTMENT CORP.",
+        "country": "SAUDI ARABIA",
         "type": "Debit",
         "scheme": "VISA",
         "category": "STANDARD"
@@ -28,3 +35,5 @@
         "category": "Business"
     }
 }
+
+
