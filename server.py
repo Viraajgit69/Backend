@@ -741,6 +741,10 @@ def setup_telegram_webhook():
         except Exception as e:
             print(f"Error setting up Telegram webhook: {str(e)}")
 
+print("📌 Available API Routes:")
+for rule in app.url_map.iter_rules():
+    print(f"➡ {rule.rule} | Methods: {', '.join(rule.methods)}")
+
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 3000))
     
