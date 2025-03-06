@@ -745,6 +745,10 @@ print("📌 Available API Routes:")
 for rule in app.url_map.iter_rules():
     print(f"➡ {rule.rule} | Methods: {', '.join(rule.methods)}")
 
+@app.route('/api/data', methods=['GET'])
+def get_data():
+    return jsonify({"message": "Your API is working!"})
+
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 3000))
     
