@@ -33,7 +33,7 @@ otp_collection = db.otp_codes  # New collection for OTP codes
 JWT_SECRET = os.getenv('JWT_SECRET', 'danger_auto_hitter_secret')
 
 # Telegram Configuration
-TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '7852591229:AAEDyeNGORVhJ1AHIm_qb5l5V9Fkf7JnI-g')
+TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '7883263881:AAHMFNUfQ1NdqQtDyKAk04pnxwtGK6R3fYo')
 ADMIN_CHAT_ID = os.getenv('ADMIN_CHAT_ID', '7506224965')
 TELEGRAM_GROUP_ID = os.getenv('TELEGRAM_GROUP_ID', '-1002197681899')  # Add your group chat ID here
 
@@ -572,7 +572,7 @@ def send_otp():
         else:
             print(f"Failed to send OTP to {telegram_id}. User may not have started a chat with the bot.")
             return jsonify({
-                'error': 'Failed to send OTP via Telegram. Ensure you have started a chat with @PropagandaHitterBot by sending /start.'
+                'error': 'Failed to send OTP via Telegram. Ensure you have started a chat with @danger_hiiter_bot by sending /start.'
             }), 400
         
     except Exception as e:
