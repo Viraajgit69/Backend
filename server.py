@@ -572,7 +572,7 @@ def send_otp():
         else:
             print(f"Failed to send OTP to {telegram_id}. User may not have started a chat with the bot.")
             return jsonify({
-                'error': 'Failed to send OTP via Telegram. Ensure you have started a chat with @danger_hiiter_bot by sending /start.'
+                'error': 'Failed to send OTP via Telegram. Ensure you have started a chat with @danger_hitter_bot by sending /start.'
             }), 400
         
     except Exception as e:
