@@ -33,7 +33,7 @@ otp_collection = db.otp_codes  # New collection for OTP codes
 JWT_SECRET = os.getenv('JWT_SECRET', 'danger_auto_hitter_secret')
 
 # Telegram Configuration
-TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '7883263881:AAHMFNUfQ1NdqQtDyKAk04pnxwtGK6R3fYo')
+TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '7852591229:AAEDyeNGORVhJ1AHIm_qb5l5V9Fkf7JnI-g')
 ADMIN_CHAT_ID = os.getenv('ADMIN_CHAT_ID', '7506224965')
 TELEGRAM_GROUP_ID = os.getenv('TELEGRAM_GROUP_ID', '-1002197681899')  # Add your group chat ID here
 
