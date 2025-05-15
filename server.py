@@ -48,7 +48,7 @@ def generate_otp():
     return ''.join(random.choice(string.digits) for _ in range(6))
 
 def send_telegram_message(chat_id, message):
-    """Send message to a specific Telegram chat"""
+    """Send message to a specific Telegram chat with detailed logging"""
     if not TELEGRAM_BOT_TOKEN or not chat_id:
         print(f'Telegram bot token or chat ID not configured. Token: {TELEGRAM_BOT_TOKEN}, Chat ID: {chat_id}')
         return False
@@ -61,16 +61,19 @@ def send_telegram_message(chat_id, message):
     }
     
     try:
-        response = requests.post(url, json=params)
-        print(f"Telegram API response: {response.status_code} - {response.text}")
-        if response.status_code == 200:
+        response = requests.post(url, json=params, timeout=5)
+        response_data = response.json()
+        print(f"Telegram API response for chat_id {chat_id}: {response.status_code} - {response_data}")
+        if response.status_code == 200 and response_data.get('ok'):
             print(f'Telegram message sent successfully to {chat_id}')
             return True
         else:
-            print(f'Failed to send Telegram message to {chat_id}: {response.text}')
+            error_code = response_data.get('error_code', 'Unknown')
+            description = response_data.get('description', 'No description')
+            print(f'Failed to send Telegram message to {chat_id}: {error_code} - {description}')
             return False
     except Exception as e:
-        print(f'Error sending Telegram message: {str(e)}')
+        print(f'Error sending Telegram message to {chat_id}: {str(e)}')
         return False
 
 def send_to_admin(message):
@@ -181,7 +184,6 @@ def register():
         result = users_collection.insert_one(user)
         
         # Store Telegram user if provided
-    # Store Telegram user if provided
         if telegram_id:
             telegram_users_collection.update_one(
                 {'telegram_id': telegram_id},
@@ -515,7 +517,7 @@ def get_admin_stats():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# New route for generating and sending OTP
+# Updated route for generating and sending OTP
 @app.route('/api/telegram/send-otp', methods=['POST'])
 def send_otp():
     try:
@@ -523,8 +525,17 @@ def send_otp():
         telegram_id = data.get('telegram_id')
         
         if not telegram_id:
+            print("Missing Telegram ID in request")
             return jsonify({'error': 'Telegram ID is required'}), 400
         
+        # Validate Telegram ID format (must be a number)
+        try:
+            telegram_id = str(telegram_id)  # Convert to string for consistency
+            int(telegram_id)  # Ensure it's a valid number
+        except ValueError:
+            print(f"Invalid Telegram ID format: {telegram_id}")
+            return jsonify({'error': 'Telegram ID must be a number'}), 400
+
         # Generate a 6-digit OTP
         otp = generate_otp()
         
@@ -556,13 +567,17 @@ def send_otp():
         success = send_telegram_message(telegram_id, message)
         
         if success:
-            return jsonify({'success': True, 'message': 'OTP sent successfully'})
+            print(f"OTP sent successfully to {telegram_id}: {otp}")
+            return jsonify({'success': True, 'message': 'OTP sent successfully'}), 200
         else:
-            return jsonify({'error': 'Failed to send OTP via Telegram'}), 500
+            print(f"Failed to send OTP to {telegram_id}. User may not have started a chat with the bot.")
+            return jsonify({
+                'error': 'Failed to send OTP via Telegram. Ensure you have started a chat with @PropagandaHitterBot by sending /start.'
+            }), 400
         
     except Exception as e:
-        print(f"Error sending OTP: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        print(f"Error sending OTP to {telegram_id}: {str(e)}")
+        return jsonify({'error': f'Failed to send OTP: {str(e)}'}), 500
 
 # Route for verifying OTP
 @app.route('/api/telegram/verify-otp', methods=['POST'])
@@ -687,41 +702,59 @@ def telegram_webhook():
         return jsonify({'error': str(e)}), 500
 
 # Create admin user if it doesn't exist
+admin_username = os.getenv('ADMIN_USERNAME', 'admin')
+admin = users_collection.find_one({'username': admin_username})
+
+if not admin:
+    hashed_password = bcrypt.hashpw('adminpassword'.encode('utf-8'), bcrypt.gensalt())
+    api_key = generate_api_key()
+    admin_data = {
+        'username': admin_username,
+        'password': hashed_password,
+        'email': 'admin@example.com',
+        'apiKey': api_key,
+        'isAdmin': True,
+        'telegram_id': ADMIN_CHAT_ID,
+        'createdAt': datetime.datetime.now()
+    }
+    result = users_collection.insert_one(admin_data)
+    
+    # Store admin in telegram users collection
+    telegram_users_collection.update_one(
+        {'telegram_id': ADMIN_CHAT_ID},
+        {'$set': {
+            'username': admin_username,
+            'user_id': str(result.inserted_id),
+            'is_admin': True,
+            'updated_at': datetime.datetime.now()
+        }},
+        upsert=True
+    )
+else:
+    # Ensure admin has the correct Telegram ID
+    if admin.get('telegram_id') != ADMIN_CHAT_ID:
+        users_collection.update_one(
+            {'_id': admin['_id']},
+            {'$set': {'telegram_id': ADMIN_CHAT_ID}}
+        )
         
-        # Store admin in telegram users collection
+        # Update telegram users collection
         telegram_users_collection.update_one(
             {'telegram_id': ADMIN_CHAT_ID},
             {'$set': {
-                'username': admin_username,
-                'user_id': str(result.inserted_id),
+                'username': admin['username'],
+                'user_id': str(admin['_id']),
                 'is_admin': True,
                 'updated_at': datetime.datetime.now()
             }},
             upsert=True
         )
-    else:
-        # Ensure admin has the correct Telegram ID
-        if admin.get('telegram_id') != ADMIN_CHAT_ID:
-            users_collection.update_one(
-                {'_id': admin['_id']},
-                {'$set': {'telegram_id': ADMIN_CHAT_ID}}
-            )
-            
-            # Update telegram users collection
-            telegram_users_collection.update_one(
-                {'telegram_id': ADMIN_CHAT_ID},
-                {'$set': {
-                    'username': admin['username'],
-                    'user_id': str(admin['_id']),
-                    'is_admin': True,
-                    'updated_at': datetime.datetime.now()
-                }},
-                upsert=True
-            )
-# set home argue
+
+# Set home route
 @app.route("/", methods=["GET"])
 def home():
     return jsonify({"message": "✅ Server is running!"}), 200
+
 # Set up Telegram webhook
 def setup_telegram_webhook():
     if TELEGRAM_BOT_TOKEN:
@@ -772,4 +805,3 @@ def get_bin_info(bin_number):
     if not bin_info:
         return jsonify({"error": "BIN not found"}), 404
     return jsonify(bin_info)
-
